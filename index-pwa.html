@@ -130,6 +130,12 @@
             box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.12);
         }
 
+        #install-app,
+        .ghost-btn,
+        #network-status {
+            display: none;
+        }
+
         .install-note {
             margin-top: 14px;
             padding: 10px 12px;
@@ -624,11 +630,11 @@
 
             <label for="code-search">Code:</label>
             <input type="text" id="code-search" placeholder="e.g. BRK123">
+        </div>
 
-            <div class="fav-toggle">
-                <input type="checkbox" id="fav-filter">
-                <label for="fav-filter">&#9733; Favorites only</label>
-            </div>
+        <div class="fav-toggle">
+            <input type="checkbox" id="fav-filter">
+            <label for="fav-filter">&#9733; Favorites only</label>
         </div>
 
         <div class="fav-actions">
@@ -672,7 +678,11 @@
         function setFiltersVisible(visible) {
             const controls = document.querySelector('.controls');
             const toggleButton = document.getElementById('toggle-filters');
+            const installNote = document.getElementById('install-note');
             controls.classList.toggle('filters-collapsed', !visible);
+            if (installNote) {
+                installNote.style.display = visible ? '' : 'none';
+            }
             toggleButton.textContent = visible ? 'Hide Filters' : 'Show Filters';
             toggleButton.setAttribute('aria-expanded', String(visible));
             localStorage.setItem(filtersVisibilityKey, visible ? 'true' : 'false');

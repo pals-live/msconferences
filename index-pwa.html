@@ -936,6 +936,7 @@
             const level = session.sessionLevel && session.sessionLevel[0] ? session.sessionLevel[0].displayValue : '';
             const topic = session.topic && session.topic[0] ? session.topic[0].displayValue : '';
             const room = getSessionRoom(session);
+            const showRoom = !document.getElementById('fav-filter').checked;
             const startTime = formatSessionTime(session.startDateTime);
             const endTime = formatSessionTime(session.endDateTime);
             const timeStr = startTime && endTime ? `${startTime} - ${endTime}` : '';
@@ -944,7 +945,7 @@
                 <div class="tt-code">${escapeHtml(session.sessionCode || '')} &middot; ${escapeHtml(type)}</div>
                 <div class="tt-title">${escapeHtml(session.title || '')}</div>
                 ${timeStr ? `<div class="tt-time">${timeStr}</div>` : ''}
-                ${room ? `<div class="tt-room">Room: ${escapeHtml(room)}</div>` : ''}
+                ${showRoom && room ? `<div class="tt-room">Room: ${escapeHtml(room)}</div>` : ''}
                 <div class="tt-speakers">${escapeHtml(formatSpeakers(session))}</div>
                 <div class="tt-desc">${escapeHtml(desc)}</div>
                 <div class="tt-meta">${escapeHtml(level)}${topic ? ' &middot; ' + escapeHtml(topic) : ''}</div>

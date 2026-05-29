@@ -1,4 +1,4 @@
-const CACHE_NAME = 'msbuild-sessions-pwa-v1';
+const CACHE_NAME = 'msbuild-sessions-pwa-v2';
 const APP_SHELL = [
   './',
   './index-pwa.html',
@@ -32,7 +32,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const requestUrl = new URL(request.url);
   const isSessionData = request.url.includes('eventtools.event.microsoft.com');
+  const isAppShellRequest =
+    request.mode === 'navigate' ||
+    requestUrl.pathname.endsWith('/index-pwa.html') ||
+    requestUrl.pathname === '/';
+
+  if (isAppShellRequest) {
+    event.respondWith(
+      fetch(request)
+        .then((networkResponse) => {
+          const copy = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put('./index-pwa.html', copy));
+          return networkResponse;
+        })
+        .catch(() => caches.match('./index-pwa.html'))
+    );
+    return;
+  }
 
   if (isSessionData) {
     event.respondWith(

@@ -135,6 +135,12 @@
             display: none;
         }
 
+        #install-app {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+        }
+
         body.filters-collapsed header {
             display: none;
         }
@@ -245,9 +251,6 @@
             font-weight: 600;
             color: var(--text);
             border-radius: 4px;
-            position: sticky;
-            top: var(--controls-height, 74px);
-            z-index: 10;
         }
 
         .time-label {
@@ -583,7 +586,6 @@
                 <p>Installable session schedule for Android and desktop browsers.</p>
             </div>
             <div class="app-actions">
-                <button id="install-app" class="install-btn" disabled>Install App</button>
                 <a class="ghost-btn" href="index.html">Open Original Page</a>
                 <div id="network-status" class="status-chip">
                     <span class="status-dot"></span>
@@ -598,6 +600,7 @@
 
     <div class="controls">
         <button id="toggle-filters" class="filter-toggle-btn" type="button" aria-expanded="true">Hide Filters</button>
+        <button id="install-app" class="install-btn" disabled>Install App</button>
 
         <div id="filter-fields" class="filter-fields">
             <label for="event-filter">Event:</label>
@@ -682,20 +685,12 @@
             toggleButton.textContent = visible ? 'Hide Filters' : 'Show Filters';
             toggleButton.setAttribute('aria-expanded', String(visible));
             localStorage.setItem(filtersVisibilityKey, visible ? 'true' : 'false');
-            updateGridHeaderOffset();
         }
 
         function initializeFiltersVisibility() {
             const saved = localStorage.getItem(filtersVisibilityKey);
             const visible = saved !== 'false';
             setFiltersVisible(visible);
-        }
-
-        function updateGridHeaderOffset() {
-            const controls = document.querySelector('.controls');
-            if (!controls) return;
-            const height = Math.ceil(controls.getBoundingClientRect().height);
-            document.documentElement.style.setProperty('--controls-height', `${height}px`);
         }
 
         function updateNetworkStatus() {
@@ -1205,12 +1200,10 @@
 
         window.addEventListener('online', updateNetworkStatus);
         window.addEventListener('offline', updateNetworkStatus);
-        window.addEventListener('resize', updateGridHeaderOffset);
 
         updateNetworkStatus();
         updateInstallButton(isStandaloneMode());
         initializeFiltersVisibility();
-        updateGridHeaderOffset();
         registerServiceWorker();
         loadData();
     </script>

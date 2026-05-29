@@ -173,6 +173,7 @@
             line-height: 1.3;
             display: -webkit-box;
             -webkit-line-clamp: 3;
+            line-clamp: 3;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
@@ -263,6 +264,30 @@
             color: #64748b;
         }
 
+        .filter-fields {
+            display: contents;
+        }
+
+        .controls.filters-collapsed .filter-fields {
+            display: none;
+        }
+
+        .filter-toggle-btn {
+            background: #334155;
+            color: #e0e0e0;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .filter-toggle-btn:hover {
+            background: #475569;
+        }
+
         .tooltip {
             display: none;
             position: fixed;
@@ -304,6 +329,12 @@
         .tooltip .tt-time {
             font-size: 0.75rem;
             color: #60a5fa;
+            margin-bottom: 6px;
+        }
+
+        .tooltip .tt-room {
+            font-size: 0.75rem;
+            color: #93c5fd;
             margin-bottom: 6px;
         }
 
@@ -375,35 +406,39 @@
     </header>
 
     <div class="controls">
-        <label for="event-filter">Event:</label>
-        <select id="event-filter">
-            <option value="build">Build</option>
-            <option value="ignite">Ignite</option>
-        </select>
+        <button id="toggle-filters" class="filter-toggle-btn" type="button" aria-expanded="true">Hide Filters</button>
 
-        <label for="year-filter">Year:</label>
-        <select id="year-filter">
-            <option value="2025">2025</option>
-            <option value="2026" selected>2026</option>
-            <option value="2027">2027</option>
-        </select>
+        <div id="filter-fields" class="filter-fields">
+            <label for="event-filter">Event:</label>
+            <select id="event-filter">
+                <option value="build">Build</option>
+                <option value="ignite">Ignite</option>
+            </select>
 
-        <label for="day-filter">Day:</label>
-        <select id="day-filter">
-            <option value="all">All Days</option>
-        </select>
+            <label for="year-filter">Year:</label>
+            <select id="year-filter">
+                <option value="2025">2025</option>
+                <option value="2026" selected>2026</option>
+                <option value="2027">2027</option>
+            </select>
 
-        <label for="type-filter">Type:</label>
-        <select id="type-filter" multiple>
-            <option value="all" selected>All Types</option>
-        </select>
+            <label for="day-filter">Day:</label>
+            <select id="day-filter">
+                <option value="all">All Days</option>
+            </select>
 
-        <label for="code-search">Code:</label>
-        <input type="text" id="code-search" placeholder="e.g. BRK123">
+            <label for="type-filter">Type:</label>
+            <select id="type-filter" multiple>
+                <option value="all" selected>All Types</option>
+            </select>
 
-        <div class="fav-toggle">
-            <input type="checkbox" id="fav-filter">
-            <label for="fav-filter">&#9733; Favorites only</label>
+            <label for="code-search">Code:</label>
+            <input type="text" id="code-search" placeholder="e.g. BRK123">
+
+            <div class="fav-toggle">
+                <input type="checkbox" id="fav-filter">
+                <label for="fav-filter">&#9733; Favorites only</label>
+            </div>
         </div>
 
         <div class="fav-actions">
@@ -441,6 +476,22 @@
         let allSessions = [];
         let tooltip = document.getElementById('tooltip');
         let tooltipPinned = false;
+        const filtersVisibilityKey = 'filters_visible';
+
+        function setFiltersVisible(visible) {
+            const controls = document.querySelector('.controls');
+            const toggleButton = document.getElementById('toggle-filters');
+            controls.classList.toggle('filters-collapsed', !visible);
+            toggleButton.textContent = visible ? 'Hide Filters' : 'Show Filters';
+            toggleButton.setAttribute('aria-expanded', String(visible));
+            localStorage.setItem(filtersVisibilityKey, visible ? 'true' : 'false');
+        }
+
+        function initializeFiltersVisibility() {
+            const saved = localStorage.getItem(filtersVisibilityKey);
+            const visible = saved !== 'false';
+            setFiltersVisible(visible);
+        }
 
         // Favorites stored per event+year
         function getFavKey() {
@@ -507,21 +558,21 @@
             return d.toISOString().split('T')[0];
         }
 
+        function getSessionRoom(session) {
+            if (!session.location) return '';
+            if (typeof session.location === 'string') return session.location.trim();
+            if (session.location.displayValue) return session.location.displayValue.trim();
+            return '';
+        }
+
         function buildGrid(sessions) {
             const container = document.getElementById('grid-container');
-
-            // Normalize location: can be an object {displayValue: ...} or a plain string
-            function getLocation(s) {
-                if (!s.location) return '';
-                if (typeof s.location === 'string') return s.location.trim();
-                if (s.location.displayValue) return s.location.displayValue.trim();
-                return '';
-            }
+            const favoritesOnly = document.getElementById('fav-filter').checked;
 
             // Filter sessions with valid time and location
             const validSessions = sessions.filter(s =>
                 s.startDateTime &&
-                getLocation(s) !== ''
+                getSessionRoom(s) !== ''
             );
 
             if (validSessions.length === 0) {
@@ -529,12 +580,9 @@
                 return;
             }
 
-            // Get unique rooms and time slots
-            const roomsSet = new Set();
             const timeSlotsMap = new Map();
 
             validSessions.forEach(s => {
-                roomsSet.add(getLocation(s));
                 const key = s.startDateTime;
                 if (!timeSlotsMap.has(key)) {
                     timeSlotsMap.set(key, {
@@ -545,27 +593,24 @@
                 }
             });
 
-            // Sort rooms
-            const rooms = [...roomsSet].sort();
+            let columns = [];
+            if (favoritesOnly) {
+                const slotCounts = timeSlots.map(slot => validSessions.filter(session => session.startDateTime === slot.key).length);
+                const maxColumns = Math.max(...slotCounts, 1);
+                columns = Array.from({ length: maxColumns }, (_, i) => String(i + 1));
+            } else {
+                columns = [...new Set(validSessions.map(getSessionRoom))].sort();
+            }
 
             // Sort time slots chronologically
             const timeSlots = [...timeSlotsMap.entries()]
                 .sort((a, b) => new Date(a[0]) - new Date(b[0]))
                 .map(([key, val]) => ({ key, ...val }));
 
-            // Build session lookup: timeSlotKey + room -> sessions
-            const sessionMap = new Map();
-            validSessions.forEach(s => {
-                const mapKey = `${s.startDateTime}|||${getLocation(s)}`;
-                if (!sessionMap.has(mapKey)) sessionMap.set(mapKey, []);
-                sessionMap.get(mapKey).push(s);
-            });
-
             // Create the grid
-            const numCols = rooms.length + 1; // +1 for time column
             const grid = document.createElement('div');
             grid.className = 'schedule-grid';
-            grid.style.gridTemplateColumns = `120px repeat(${rooms.length}, minmax(150px, 1fr))`;
+            grid.style.gridTemplateColumns = `120px repeat(${columns.length}, minmax(150px, 1fr))`;
 
             // Header row
             const cornerCell = document.createElement('div');
@@ -573,11 +618,16 @@
             cornerCell.textContent = 'Time';
             grid.appendChild(cornerCell);
 
-            rooms.forEach(room => {
+            columns.forEach(column => {
                 const header = document.createElement('div');
                 header.className = 'grid-header';
-                header.textContent = room;
-                header.title = room;
+                if (favoritesOnly) {
+                    header.textContent = column;
+                    header.title = `Column ${column}`;
+                } else {
+                    header.textContent = column;
+                    header.title = column;
+                }
                 grid.appendChild(header);
             });
 
@@ -592,12 +642,27 @@
                 timeCell.textContent = `${dateLabel} ${timeLabel}`;
                 grid.appendChild(timeCell);
 
-                // Room cells
-                rooms.forEach(room => {
+                const slotSessions = validSessions
+                    .filter(session => session.startDateTime === slot.key)
+                    .sort((a, b) => {
+                        if (favoritesOnly) {
+                            return (a.sessionCode || '').localeCompare(b.sessionCode || '');
+                        }
+                        return getSessionRoom(a).localeCompare(getSessionRoom(b));
+                    });
+
+                // Session columns
+                columns.forEach((column, columnIndex) => {
                     const cell = document.createElement('div');
                     cell.className = 'grid-cell';
-                    const mapKey = `${slot.key}|||${room}`;
-                    const cellSessions = sessionMap.get(mapKey) || [];
+                    let cellSessions = [];
+
+                    if (favoritesOnly) {
+                        const session = slotSessions[columnIndex];
+                        cellSessions = session ? [session] : [];
+                    } else {
+                        cellSessions = slotSessions.filter(session => getSessionRoom(session) === column);
+                    }
 
                     cellSessions.forEach(s => {
                         const card = document.createElement('div');
@@ -663,6 +728,7 @@
             const type = session.sessionType?.displayValue || 'Unknown';
             const level = session.sessionLevel?.[0]?.displayValue || '';
             const topic = session.topic?.[0]?.displayValue || '';
+            const room = getSessionRoom(session);
             const startTime = formatSessionTime(session.startDateTime);
             const endTime = formatSessionTime(session.endDateTime);
             const timeStr = startTime && endTime ? `${startTime} – ${endTime}` : '';
@@ -671,6 +737,7 @@
                 <div class="tt-code">${escapeHtml(session.sessionCode || '')} &middot; ${escapeHtml(type)}</div>
                 <div class="tt-title">${escapeHtml(session.title || '')}</div>
                 ${timeStr ? `<div class="tt-time">${timeStr}</div>` : ''}
+                ${room ? `<div class="tt-room">Room: ${escapeHtml(room)}</div>` : ''}
                 <div class="tt-speakers">${escapeHtml(formatSpeakers(session))}</div>
                 <div class="tt-desc">${escapeHtml(desc)}</div>
                 <div class="tt-meta">${escapeHtml(level)}${topic ? ' &middot; ' + escapeHtml(topic) : ''}</div>
@@ -703,6 +770,7 @@
             const type = session.sessionType?.displayValue || 'Unknown';
             const level = session.sessionLevel?.[0]?.displayValue || '';
             const topic = session.topic?.[0]?.displayValue || '';
+            const room = getSessionRoom(session);
             const startTime = formatSessionTime(session.startDateTime);
             const endTime = formatSessionTime(session.endDateTime);
             const timeStr = startTime && endTime ? `${startTime} – ${endTime}` : '';
@@ -710,6 +778,7 @@
                 <div class="tt-code">${escapeHtml(session.sessionCode || '')} &middot; ${escapeHtml(type)}</div>
                 <div class="tt-title">${escapeHtml(session.title || '')}</div>
                 ${timeStr ? `<div class="tt-time">${timeStr}</div>` : ''}
+                ${room ? `<div class="tt-room">Room: ${escapeHtml(room)}</div>` : ''}
                 <div class="tt-speakers">${escapeHtml(formatSpeakers(session))}</div>
                 <div class="tt-desc">${escapeHtml(desc)}</div>
                 <div class="tt-meta">${escapeHtml(level)}${topic ? ' &middot; ' + escapeHtml(topic) : ''}</div>
@@ -883,6 +952,11 @@
             e.target.value = '';
         });
 
+        document.getElementById('toggle-filters').addEventListener('click', () => {
+            const isExpanded = document.getElementById('toggle-filters').getAttribute('aria-expanded') === 'true';
+            setFiltersVisible(!isExpanded);
+        });
+
         document.getElementById('day-filter').addEventListener('change', applyFilters);
         document.getElementById('code-search').addEventListener('input', applyFilters);
         document.getElementById('fav-filter').addEventListener('change', applyFilters);
@@ -903,6 +977,7 @@
             applyFilters();
         });
 
+        initializeFiltersVisibility();
         loadData();
     </script>
 </body>

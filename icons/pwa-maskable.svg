@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Build Sessions maskable icon">
+  <defs>
+    <linearGradient id="maskBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#091b36" />
+      <stop offset="1" stop-color="#1d4ed8" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#maskBg)" />
+  <circle cx="256" cy="256" r="184" fill="#ffffff" opacity="0.1" />
+  <rect x="138" y="150" width="236" height="212" rx="28" fill="#0ea5e9" opacity="0.92" />
+  <rect x="166" y="184" width="180" height="24" rx="8" fill="#082f49" />
+  <rect x="166" y="222" width="130" height="16" rx="6" fill="#e0f2fe" />
+  <rect x="166" y="250" width="158" height="16" rx="6" fill="#e0f2fe" opacity="0.9" />
+  <rect x="166" y="278" width="118" height="16" rx="6" fill="#e0f2fe" opacity="0.85" />
+  <path d="M298 286l20 20 34-44" fill="none" stroke="#16a34a" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" />
+</svg>

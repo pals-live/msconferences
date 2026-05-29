@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microsoft Build Sessions App</title>
+    <meta name="theme-color" content="#0f3460">
+    <meta name="description" content="Installable Microsoft Build and Ignite session schedule.">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Build Sessions">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/pwa-icon-192.svg" type="image/svg+xml">
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --panel: #16213e;
+            --panel-strong: #0f3460;
+            --panel-soft: #1e293b;
+            --text: #e0e0e0;
+            --muted: #94a3b8;
+            --line: #334155;
+            --accent: #0ea5e9;
+            --accent-2: #38bdf8;
+            --warning: #facc15;
+            --success: #10b981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(14, 165, 233, 0.18), transparent 24%),
+                linear-gradient(180deg, #0d1425 0%, var(--bg) 35%, #111827 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--panel-strong), var(--panel));
+            padding: 20px 24px 16px;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .title-wrap h1 {
+            font-size: 2rem;
+            color: #ffffff;
+            margin-bottom: 6px;
+        }
+
+        .title-wrap p {
+            color: var(--muted);
+            font-size: 0.95rem;
+        }
+
+        .app-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .install-btn,
+        .ghost-btn {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 999px;
+            padding: 10px 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.15s, background 0.15s, border-color 0.15s;
+        }
+
+        .install-btn {
+            background: linear-gradient(135deg, var(--accent), var(--accent-2));
+            color: #031525;
+            border-color: transparent;
+        }
+
+        .install-btn:hover:not([disabled]),
+        .ghost-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .install-btn[disabled] {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .ghost-btn {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
+        }
+
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border-radius: 999px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--muted);
+            font-size: 0.8rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.12);
+        }
+
+        .status-chip.offline .status-dot {
+            background: #f97316;
+            box-shadow: 0 0 0 6px rgba(249, 115, 22, 0.12);
+        }
+
+        .install-note {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border: 1px solid rgba(14, 165, 233, 0.25);
+            background: rgba(14, 165, 233, 0.08);
+            border-radius: 10px;
+            color: #dbeafe;
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .controls {
+            padding: 15px 24px;
+            background: rgba(22, 33, 62, 0.95);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #1e3a5f;
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 15;
+        }
+
+        .controls label {
+            color: var(--muted);
+            font-size: 0.85rem;
+        }
+
+        .controls select,
+        .controls input[type="text"] {
+            background: var(--bg);
+            color: var(--text);
+            border: 1px solid var(--line);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+
+        .controls select:focus,
+        .controls input[type="text"]:focus,
+        .install-btn:focus,
+        .ghost-btn:focus {
+            outline: 2px solid rgba(56, 189, 248, 0.4);
+            outline-offset: 2px;
+        }
+
+        .controls select[multiple] {
+            height: auto;
+            min-height: 36px;
+            max-height: 150px;
+            padding: 4px;
+        }
+
+        .controls select[multiple] option {
+            padding: 4px 8px;
+            border-radius: 3px;
+            margin-bottom: 1px;
+        }
+
+        .controls select[multiple] option:checked {
+            background: #1d4ed8 linear-gradient(0deg, #1d4ed8 0%, #1d4ed8 100%);
+            color: #fff;
+        }
+
+        .legend {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-left: auto;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .grid-container {
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .schedule-grid {
+            display: grid;
+            gap: 2px;
+            min-width: fit-content;
+        }
+
+        .grid-header {
+            background: var(--panel-strong);
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text);
+            border-radius: 4px;
+            position: sticky;
+            top: 74px;
+            z-index: 10;
+        }
+
+        .time-label {
+            background: var(--panel);
+            padding: 8px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--accent);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+
+        .grid-cell {
+            background: var(--panel);
+            border-radius: 4px;
+            padding: 3px;
+            min-height: 80px;
+        }
+
+        .session-card {
+            border-radius: 8px;
+            padding: 8px 10px;
+            margin-bottom: 3px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .session-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        .session-card .session-code {
+            font-size: 0.65rem;
+            font-weight: 700;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .session-card .session-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 3px 0;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .session-card .session-speakers {
+            font-size: 0.65rem;
+            opacity: 0.8;
+            font-style: italic;
+        }
+
+        .session-card .fav-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            opacity: 0.4;
+            transition: opacity 0.15s, transform 0.15s;
+            padding: 2px 4px;
+            line-height: 1;
+            z-index: 10;
+        }
+
+        .session-card .fav-btn:hover {
+            opacity: 1;
+            transform: scale(1.3);
+        }
+
+        .session-card .fav-btn.favorited {
+            opacity: 1;
+            color: var(--warning);
+        }
+
+        .session-card.is-favorite {
+            box-shadow: inset 0 0 0 1px rgba(250, 204, 21, 0.4);
+        }
+
+        .fav-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: auto;
+        }
+
+        .fav-toggle input[type="checkbox"] {
+            accent-color: var(--warning);
+        }
+
+        .fav-toggle label {
+            color: var(--warning);
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .fav-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .fav-actions button {
+            background: #334155;
+            color: var(--text);
+            border: 1px solid #475569;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .fav-actions button:hover {
+            background: #475569;
+        }
+
+        .controls input[type="text"] {
+            width: 140px;
+        }
+
+        .controls input[type="text"]::placeholder {
+            color: #64748b;
+        }
+
+        .tooltip {
+            display: none;
+            position: fixed;
+            background: var(--panel-soft);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 400px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 10000;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+            pointer-events: none;
+        }
+
+        .tooltip.visible {
+            display: block;
+        }
+
+        .tooltip.pinned {
+            pointer-events: auto;
+            border-color: var(--accent);
+        }
+
+        .tooltip .tt-code {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 4px;
+        }
+
+        .tooltip .tt-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 6px;
+        }
+
+        .tooltip .tt-time {
+            font-size: 0.75rem;
+            color: #60a5fa;
+            margin-bottom: 6px;
+        }
+
+        .tooltip .tt-speakers {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .tooltip .tt-desc {
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .tooltip .tt-meta {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--line);
+        }
+
+        .type-breakout { background: linear-gradient(135deg, #1e40af, #1d4ed8); color: #dbeafe; }
+        .type-lab { background: linear-gradient(135deg, #065f46, #047857); color: #d1fae5; }
+        .type-demo { background: linear-gradient(135deg, #92400e, #b45309); color: #fef3c7; }
+        .type-lightning-talk { background: linear-gradient(135deg, #7c2d12, #c2410c); color: #ffedd5; }
+        .type-table-talk { background: linear-gradient(135deg, #581c87, #7c3aed); color: #ede9fe; }
+        .type-pre-recorded { background: linear-gradient(135deg, #374151, #4b5563); color: #e5e7eb; }
+        .type-keynote { background: linear-gradient(135deg, #991b1b, #dc2626); color: #fecaca; }
+        .type-other { background: linear-gradient(135deg, #334155, #475569); color: #e2e8f0; }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60vh;
+            font-size: 1.2rem;
+            color: var(--muted);
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--line);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-sessions {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 900px) {
+            header {
+                padding: 18px 16px 14px;
+            }
+
+            .controls {
+                padding: 14px 16px;
+            }
+
+            .grid-container {
+                padding: 16px;
+            }
+
+            .grid-header {
+                top: 118px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .title-wrap h1 {
+                font-size: 1.6rem;
+            }
+
+            .app-actions {
+                width: 100%;
+            }
+
+            .install-btn,
+            .ghost-btn,
+            .status-chip {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .controls {
+                align-items: stretch;
+            }
+
+            .controls label,
+            .controls select,
+            .controls input[type="text"] {
+                width: 100%;
+            }
+
+            .controls input[type="text"] {
+                width: 100%;
+            }
+
+            .fav-toggle,
+            .fav-actions,
+            .legend {
+                width: 100%;
+                margin-left: 0;
+            }
+
+            .legend {
+                gap: 8px 12px;
+            }
+
+            .grid-header {
+                top: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-bar">
+            <div class="title-wrap">
+                <h1 id="event-title">Microsoft Build 2026</h1>
+                <p>Installable session schedule for Android and desktop browsers.</p>
+            </div>
+            <div class="app-actions">
+                <button id="install-app" class="install-btn" disabled>Install App</button>
+                <a class="ghost-btn" href="index.html">Open Original Page</a>
+                <div id="network-status" class="status-chip">
+                    <span class="status-dot"></span>
+                    <span>Online</span>
+                </div>
+            </div>
+        </div>
+        <div id="install-note" class="install-note">
+            On Android, open this page in Chrome or Edge and use the install button or the browser menu if the prompt is not shown yet.
+        </div>
+    </header>
+
+    <div class="controls">
+        <label for="event-filter">Event:</label>
+        <select id="event-filter">
+            <option value="build">Build</option>
+            <option value="ignite">Ignite</option>
+        </select>
+
+        <label for="year-filter">Year:</label>
+        <select id="year-filter">
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+        </select>
+
+        <label for="day-filter">Day:</label>
+        <select id="day-filter">
+            <option value="all">All Days</option>
+        </select>
+
+        <label for="type-filter">Type:</label>
+        <select id="type-filter" multiple>
+            <option value="all" selected>All Types</option>
+        </select>
+
+        <label for="code-search">Code:</label>
+        <input type="text" id="code-search" placeholder="e.g. BRK123">
+
+        <div class="fav-toggle">
+            <input type="checkbox" id="fav-filter">
+            <label for="fav-filter">&#9733; Favorites only</label>
+        </div>
+
+        <div class="fav-actions">
+            <button id="export-favs" title="Export favorites to file">Export</button>
+            <button id="import-favs" title="Import favorites from file">Import</button>
+            <input type="file" id="import-file" accept=".json" style="display:none">
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background:#1d4ed8"></div>Breakout</div>
+            <div class="legend-item"><div class="legend-color" style="background:#047857"></div>Lab</div>
+            <div class="legend-item"><div class="legend-color" style="background:#b45309"></div>Demo</div>
+            <div class="legend-item"><div class="legend-color" style="background:#c2410c"></div>Lightning Talk</div>
+            <div class="legend-item"><div class="legend-color" style="background:#7c3aed"></div>Table Talk</div>
+            <div class="legend-item"><div class="legend-color" style="background:#4b5563"></div>Pre-recorded</div>
+        </div>
+    </div>
+
+    <div class="grid-container" id="grid-container">
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            Loading sessions...
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        function getDataUrl() {
+            const event = document.getElementById('event-filter').value;
+            const year = document.getElementById('year-filter').value;
+            return `https://eventtools.event.microsoft.com/${event}${year}-prod/fallback/session-all-en-us.json`;
+        }
+
+        let allSessions = [];
+        let tooltip = document.getElementById('tooltip');
+        let tooltipPinned = false;
+        let deferredInstallPrompt = null;
+
+        function updateNetworkStatus() {
+            const chip = document.getElementById('network-status');
+            const label = chip.querySelector('span:last-child');
+            const online = navigator.onLine;
+            chip.classList.toggle('offline', !online);
+            label.textContent = online ? 'Online' : 'Offline shell available';
+        }
+
+        function updateInstallButton(installed) {
+            const button = document.getElementById('install-app');
+            if (installed) {
+                button.disabled = true;
+                button.textContent = 'Installed';
+                return;
+            }
+            if (deferredInstallPrompt) {
+                button.disabled = false;
+                button.textContent = 'Install App';
+                return;
+            }
+            button.disabled = true;
+            button.textContent = 'Use browser menu to install';
+        }
+
+        function isStandaloneMode() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+
+        function getFavKey() {
+            const event = document.getElementById('event-filter').value;
+            const year = document.getElementById('year-filter').value;
+            return `favorites_${event}${year}`;
+        }
+
+        function getFavorites() {
+            try {
+                return JSON.parse(localStorage.getItem(getFavKey())) || [];
+            } catch {
+                return [];
+            }
+        }
+
+        function toggleFavorite(sessionId) {
+            const favs = getFavorites();
+            const idx = favs.indexOf(sessionId);
+            if (idx >= 0) {
+                favs.splice(idx, 1);
+            } else {
+                favs.push(sessionId);
+            }
+            localStorage.setItem(getFavKey(), JSON.stringify(favs));
+            applyFilters();
+        }
+
+        function isFavorite(sessionId) {
+            return getFavorites().includes(sessionId);
+        }
+
+        function getSessionTypeClass(type) {
+            if (!type) return 'type-other';
+            const normalized = type.toLowerCase();
+            if (normalized.includes('breakout')) return 'type-breakout';
+            if (normalized.includes('lab')) return 'type-lab';
+            if (normalized.includes('demo')) return 'type-demo';
+            if (normalized.includes('lightning')) return 'type-lightning-talk';
+            if (normalized.includes('table')) return 'type-table-talk';
+            if (normalized.includes('pre-recorded')) return 'type-pre-recorded';
+            if (normalized.includes('keynote')) return 'type-keynote';
+            return 'type-other';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatTime(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        function formatSessionTime(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true,
+                timeZone: 'America/Los_Angeles'
+            });
+        }
+
+        function formatSpeakers(session) {
+            if (session.speakers && session.speakers.length > 0) {
+                return session.speakers.map(sp => {
+                    const name = [sp.firstName, sp.lastName].filter(Boolean).join(' ') || sp.fullName || sp.name || '';
+                    const company = sp.companyName || sp.company || '';
+                    return company ? `${name} (${company})` : name;
+                }).join(', ');
+            }
+            return session.speakerNames || 'No speakers listed';
+        }
+
+        function buildGrid(sessions) {
+            const container = document.getElementById('grid-container');
+
+            function getLocation(session) {
+                if (!session.location) return '';
+                if (typeof session.location === 'string') return session.location.trim();
+                if (session.location.displayValue) return session.location.displayValue.trim();
+                return '';
+            }
+
+            const validSessions = sessions.filter(session => session.startDateTime && getLocation(session) !== '');
+
+            if (validSessions.length === 0) {
+                container.innerHTML = '<div class="no-sessions">No sessions match the current filters.</div>';
+                return;
+            }
+
+            const rooms = [...new Set(validSessions.map(getLocation))].sort();
+            const timeSlotsMap = new Map();
+
+            validSessions.forEach(session => {
+                const key = session.startDateTime;
+                if (!timeSlotsMap.has(key)) {
+                    timeSlotsMap.set(key, {
+                        start: session.startDateTime,
+                        end: session.endDateTime,
+                        timeSlot: session.TimeSlot || formatTime(session.startDateTime)
+                    });
+                }
+            });
+
+            const timeSlots = [...timeSlotsMap.entries()]
+                .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+                .map(([key, value]) => ({ key, ...value }));
+
+            const sessionMap = new Map();
+            validSessions.forEach(session => {
+                const mapKey = `${session.startDateTime}|||${getLocation(session)}`;
+                if (!sessionMap.has(mapKey)) {
+                    sessionMap.set(mapKey, []);
+                }
+                sessionMap.get(mapKey).push(session);
+            });
+
+            const grid = document.createElement('div');
+            grid.className = 'schedule-grid';
+            grid.style.gridTemplateColumns = `120px repeat(${rooms.length}, minmax(150px, 1fr))`;
+
+            const cornerCell = document.createElement('div');
+            cornerCell.className = 'grid-header';
+            cornerCell.textContent = 'Time';
+            grid.appendChild(cornerCell);
+
+            rooms.forEach(room => {
+                const header = document.createElement('div');
+                header.className = 'grid-header';
+                header.textContent = room;
+                header.title = room;
+                grid.appendChild(header);
+            });
+
+            timeSlots.forEach(slot => {
+                const timeCell = document.createElement('div');
+                timeCell.className = 'time-label';
+                const slotDate = new Date(slot.key);
+                const dateLabel = slotDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    timeZone: 'America/Los_Angeles'
+                });
+                const timeLabel = slotDate.toLocaleTimeString('en-US', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                    timeZone: 'America/Los_Angeles'
+                });
+                timeCell.textContent = `${dateLabel} ${timeLabel}`;
+                grid.appendChild(timeCell);
+
+                rooms.forEach(room => {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    const mapKey = `${slot.key}|||${room}`;
+                    const cellSessions = sessionMap.get(mapKey) || [];
+
+                    cellSessions.forEach(session => {
+                        const card = document.createElement('div');
+                        const typeClass = getSessionTypeClass(session.sessionType && session.sessionType.displayValue);
+                        const sessionId = session.sessionId || session.sessionCode || '';
+                        const favorite = isFavorite(sessionId);
+                        card.className = `session-card ${typeClass}${favorite ? ' is-favorite' : ''}`;
+
+                        card.innerHTML = `
+                            <button class="fav-btn${favorite ? ' favorited' : ''}" title="${favorite ? 'Remove from favorites' : 'Add to favorites'}">${favorite ? '★' : '☆'}</button>
+                            <div class="session-code">${escapeHtml(session.sessionCode || '')}</div>
+                            <div class="session-title">${escapeHtml(session.title || '')}</div>
+                            <div class="session-speakers">${escapeHtml(session.speakerNames || '')}</div>
+                        `;
+
+                        card.querySelector('.fav-btn').addEventListener('click', event => {
+                            event.stopPropagation();
+                            toggleFavorite(sessionId);
+                        });
+
+                        card.addEventListener('mouseenter', event => showTooltip(event, session));
+                        card.addEventListener('mousemove', moveTooltip);
+                        card.addEventListener('mouseleave', hideTooltip);
+                        card.addEventListener('click', event => pinTooltip(event, session));
+
+                        cell.appendChild(card);
+                    });
+
+                    grid.appendChild(cell);
+                });
+            });
+
+            container.innerHTML = '';
+            container.appendChild(grid);
+        }
+
+        function showTooltip(event, session) {
+            if (tooltipPinned) return;
+            const desc = session.description || 'No description available.';
+            const type = session.sessionType && session.sessionType.displayValue ? session.sessionType.displayValue : 'Unknown';
+            const level = session.sessionLevel && session.sessionLevel[0] ? session.sessionLevel[0].displayValue : '';
+            const topic = session.topic && session.topic[0] ? session.topic[0].displayValue : '';
+            const startTime = formatSessionTime(session.startDateTime);
+            const endTime = formatSessionTime(session.endDateTime);
+            const timeStr = startTime && endTime ? `${startTime} - ${endTime}` : '';
+
+            tooltip.innerHTML = `
+                <div class="tt-code">${escapeHtml(session.sessionCode || '')} &middot; ${escapeHtml(type)}</div>
+                <div class="tt-title">${escapeHtml(session.title || '')}</div>
+                ${timeStr ? `<div class="tt-time">${timeStr}</div>` : ''}
+                <div class="tt-speakers">${escapeHtml(formatSpeakers(session))}</div>
+                <div class="tt-desc">${escapeHtml(desc)}</div>
+                <div class="tt-meta">${escapeHtml(level)}${topic ? ' &middot; ' + escapeHtml(topic) : ''}</div>
+            `;
+            tooltip.classList.add('visible');
+            moveTooltip(event);
+        }
+
+        function moveTooltip(event) {
+            if (tooltipPinned) return;
+            const x = event.clientX + 15;
+            const y = event.clientY + 15;
+            const maxX = window.innerWidth - 420;
+            const maxY = window.innerHeight - 320;
+            tooltip.style.left = Math.min(x, maxX) + 'px';
+            tooltip.style.top = Math.min(y, maxY) + 'px';
+        }
+
+        function hideTooltip() {
+            if (tooltipPinned) return;
+            tooltip.classList.remove('visible');
+        }
+
+        function pinTooltip(event, session) {
+            event.stopPropagation();
+            tooltipPinned = true;
+            tooltip.classList.add('pinned');
+            showTooltip(event, session);
+        }
+
+        function unpinTooltip() {
+            tooltipPinned = false;
+            tooltip.classList.remove('pinned');
+            tooltip.classList.remove('visible');
+        }
+
+        function populateFilters(sessions) {
+            const dayFilter = document.getElementById('day-filter');
+            const typeFilter = document.getElementById('type-filter');
+            const days = new Set();
+            const types = new Set();
+
+            sessions.forEach(session => {
+                if (session.startDateTime) {
+                    const date = new Date(session.startDateTime);
+                    const pacificDay = date.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+                    days.add(pacificDay);
+                }
+                if (session.sessionType && session.sessionType.displayValue) {
+                    types.add(session.sessionType.displayValue);
+                }
+            });
+
+            [...days].sort().forEach(day => {
+                const option = document.createElement('option');
+                option.value = day;
+                const date = new Date(day + 'T12:00:00Z');
+                option.textContent = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                dayFilter.appendChild(option);
+            });
+
+            [...types].sort().forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = type;
+                typeFilter.appendChild(option);
+            });
+        }
+
+        function applyFilters() {
+            const dayValue = document.getElementById('day-filter').value;
+            const typeSelect = document.getElementById('type-filter');
+            const selectedTypes = [...typeSelect.selectedOptions].map(option => option.value);
+            const filterByType = !selectedTypes.includes('all') && selectedTypes.length > 0;
+            let filtered = allSessions;
+
+            if (dayValue !== 'all') {
+                filtered = filtered.filter(session => {
+                    if (!session.startDateTime) return false;
+                    const date = new Date(session.startDateTime);
+                    const pacificDay = date.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+                    return pacificDay === dayValue;
+                });
+            }
+
+            if (filterByType) {
+                filtered = filtered.filter(session => selectedTypes.includes(session.sessionType && session.sessionType.displayValue));
+            }
+
+            if (document.getElementById('fav-filter').checked) {
+                const favorites = getFavorites();
+                filtered = filtered.filter(session => favorites.includes(session.sessionId || session.sessionCode || ''));
+            }
+
+            const codeSearch = document.getElementById('code-search').value.trim().toLowerCase();
+            if (codeSearch) {
+                filtered = filtered.filter(session => (session.sessionCode || '').toLowerCase().includes(codeSearch));
+            }
+
+            buildGrid(filtered);
+        }
+
+        async function loadData() {
+            const container = document.getElementById('grid-container');
+            container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Loading sessions...</div>';
+
+            const event = document.getElementById('event-filter').value;
+            const year = document.getElementById('year-filter').value;
+            const eventName = event.charAt(0).toUpperCase() + event.slice(1);
+            document.getElementById('event-title').textContent = `Microsoft ${eventName} ${year}`;
+
+            const dayFilter = document.getElementById('day-filter');
+            dayFilter.innerHTML = '<option value="all">All Days</option>';
+            const typeFilter = document.getElementById('type-filter');
+            typeFilter.innerHTML = '<option value="all" selected>All Types</option>';
+
+            try {
+                const response = await fetch(getDataUrl());
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const data = await response.json();
+                allSessions = Array.isArray(data) ? data : (data.value || data.sessions || []);
+                populateFilters(allSessions);
+                if (dayFilter.options.length > 1) {
+                    dayFilter.value = dayFilter.options[1].value;
+                }
+                applyFilters();
+            } catch (error) {
+                allSessions = [];
+                document.getElementById('grid-container').innerHTML =
+                    '<div class="no-sessions">No session data available for this event. If you are offline, reopen after the app has loaded once online.</div>';
+            }
+        }
+
+        async function registerServiceWorker() {
+            if (!('serviceWorker' in navigator)) {
+                return;
+            }
+
+            try {
+                await navigator.serviceWorker.register('sw.js');
+            } catch (error) {
+                console.error('Service worker registration failed:', error);
+            }
+        }
+
+        document.addEventListener('click', event => {
+            if (tooltipPinned && !tooltip.contains(event.target)) {
+                unpinTooltip();
+            }
+        });
+
+        document.getElementById('export-favs').addEventListener('click', () => {
+            const allFavs = {};
+            for (let i = 0; i < localStorage.length; i += 1) {
+                const key = localStorage.key(i);
+                if (key && key.startsWith('favorites_')) {
+                    allFavs[key] = JSON.parse(localStorage.getItem(key));
+                }
+            }
+            const blob = new Blob([JSON.stringify(allFavs, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = 'build-favorites.json';
+            anchor.click();
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('import-favs').addEventListener('click', () => {
+            document.getElementById('import-file').click();
+        });
+
+        document.getElementById('import-file').addEventListener('change', event => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = loadEvent => {
+                try {
+                    const data = JSON.parse(loadEvent.target.result);
+                    for (const [key, value] of Object.entries(data)) {
+                        if (key.startsWith('favorites_') && Array.isArray(value)) {
+                            const existing = JSON.parse(localStorage.getItem(key) || '[]');
+                            const merged = [...new Set([...existing, ...value])];
+                            localStorage.setItem(key, JSON.stringify(merged));
+                        }
+                    }
+                    applyFilters();
+                } catch (error) {
+                    alert('Invalid favorites file.');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        });
+
+        document.getElementById('install-app').addEventListener('click', async () => {
+            if (!deferredInstallPrompt) {
+                return;
+            }
+            deferredInstallPrompt.prompt();
+            const result = await deferredInstallPrompt.userChoice;
+            if (result.outcome !== 'accepted') {
+                updateInstallButton(false);
+                return;
+            }
+            deferredInstallPrompt = null;
+            updateInstallButton(true);
+        });
+
+        document.getElementById('day-filter').addEventListener('change', applyFilters);
+        document.getElementById('code-search').addEventListener('input', applyFilters);
+        document.getElementById('fav-filter').addEventListener('change', applyFilters);
+        document.getElementById('event-filter').addEventListener('change', loadData);
+        document.getElementById('year-filter').addEventListener('change', loadData);
+        document.getElementById('type-filter').addEventListener('change', function () {
+            const selectedValues = [...this.selectedOptions].map(option => option.value);
+            if (selectedValues.includes('all') && selectedValues.length > 1) {
+                [...this.options].forEach(option => {
+                    option.selected = option.value === 'all';
+                });
+            } else if (!selectedValues.includes('all') && selectedValues.length > 0) {
+                this.options[0].selected = false;
+            } else if (selectedValues.length === 0) {
+                this.options[0].selected = true;
+            }
+            applyFilters();
+        });
+
+        window.addEventListener('beforeinstallprompt', event => {
+            event.preventDefault();
+            deferredInstallPrompt = event;
+            updateInstallButton(false);
+        });
+
+        window.addEventListener('appinstalled', () => {
+            deferredInstallPrompt = null;
+            updateInstallButton(true);
+        });
+
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+
+        updateNetworkStatus();
+        updateInstallButton(isStandaloneMode());
+        registerServiceWorker();
+        loadData();
+    </script>
+</body>
+</html>

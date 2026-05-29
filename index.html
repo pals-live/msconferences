@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microsoft Build 2026 - Sessions</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        header {
+            background: linear-gradient(135deg, #0f3460, #16213e);
+            padding: 20px 40px;
+            text-align: center;
+            border-bottom: 2px solid #0ea5e9;
+        }
+
+        header h1 {
+            font-size: 2rem;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+
+        header p {
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        .controls {
+            padding: 15px 40px;
+            background: #16213e;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 1px solid #1e3a5f;
+        }
+
+        .controls label {
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .controls select {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            border: 1px solid #334155;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+
+        .controls select[multiple] {
+            height: auto;
+            min-height: 34px;
+            max-height: 150px;
+            padding: 4px;
+        }
+
+        .controls select[multiple] option {
+            padding: 4px 8px;
+            border-radius: 3px;
+            margin-bottom: 1px;
+        }
+
+        .controls select[multiple] option:checked {
+            background: #1d4ed8 linear-gradient(0deg, #1d4ed8 0%, #1d4ed8 100%);
+            color: #fff;
+        }
+
+        .legend {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-left: auto;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.75rem;
+            color: #94a3b8;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        .grid-container {
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .schedule-grid {
+            display: grid;
+            gap: 2px;
+            min-width: fit-content;
+        }
+
+        .grid-header {
+            background: #0f3460;
+            padding: 10px 8px;
+            text-align: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #e0e0e0;
+            border-radius: 4px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .time-label {
+            background: #16213e;
+            padding: 8px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #0ea5e9;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+
+        .grid-cell {
+            background: #16213e;
+            border-radius: 4px;
+            padding: 3px;
+            min-height: 80px;
+        }
+
+        .session-card {
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 3px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .session-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+        }
+
+        .session-card .session-code {
+            font-size: 0.65rem;
+            font-weight: 700;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .session-card .session-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 3px 0;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .session-card .session-speakers {
+            font-size: 0.65rem;
+            opacity: 0.8;
+            font-style: italic;
+        }
+
+        .session-card .fav-btn {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            opacity: 0.4;
+            transition: opacity 0.15s, transform 0.15s;
+            padding: 2px 4px;
+            line-height: 1;
+            z-index: 10;
+        }
+
+        .session-card .fav-btn:hover {
+            opacity: 1;
+            transform: scale(1.3);
+        }
+
+        .session-card .fav-btn.favorited {
+            opacity: 1;
+            color: #facc15;
+        }
+
+        .session-card.is-favorite {
+            box-shadow: inset 0 0 0 1px #facc1566;
+        }
+
+        .fav-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: auto;
+        }
+
+        .fav-toggle input[type="checkbox"] {
+            accent-color: #facc15;
+        }
+
+        .fav-toggle label {
+            color: #facc15;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .fav-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .fav-actions button {
+            background: #334155;
+            color: #e0e0e0;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .fav-actions button:hover {
+            background: #475569;
+        }
+
+        .controls input[type="text"] {
+            background: #1a1a2e;
+            color: #e0e0e0;
+            border: 1px solid #334155;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            width: 140px;
+        }
+
+        .controls input[type="text"]::placeholder {
+            color: #64748b;
+        }
+
+        .tooltip {
+            display: none;
+            position: fixed;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 15px;
+            max-width: 400px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 10000;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
+            pointer-events: none;
+        }
+
+        .tooltip.visible {
+            display: block;
+        }
+
+        .tooltip.pinned {
+            pointer-events: auto;
+            border-color: #0ea5e9;
+        }
+
+        .tooltip .tt-code {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #0ea5e9;
+            margin-bottom: 4px;
+        }
+
+        .tooltip .tt-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #ffffff;
+            margin-bottom: 6px;
+        }
+
+        .tooltip .tt-time {
+            font-size: 0.75rem;
+            color: #60a5fa;
+            margin-bottom: 6px;
+        }
+
+        .tooltip .tt-speakers {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 8px;
+        }
+
+        .tooltip .tt-desc {
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            line-height: 1.5;
+        }
+
+        .tooltip .tt-meta {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #334155;
+        }
+
+        /* Session type colors */
+        .type-breakout { background: linear-gradient(135deg, #1e40af, #1d4ed8); color: #dbeafe; }
+        .type-lab { background: linear-gradient(135deg, #065f46, #047857); color: #d1fae5; }
+        .type-demo { background: linear-gradient(135deg, #92400e, #b45309); color: #fef3c7; }
+        .type-lightning-talk { background: linear-gradient(135deg, #7c2d12, #c2410c); color: #ffedd5; }
+        .type-table-talk { background: linear-gradient(135deg, #581c87, #7c3aed); color: #ede9fe; }
+        .type-pre-recorded { background: linear-gradient(135deg, #374151, #4b5563); color: #e5e7eb; }
+        .type-keynote { background: linear-gradient(135deg, #991b1b, #dc2626); color: #fecaca; }
+        .type-other { background: linear-gradient(135deg, #334155, #475569); color: #e2e8f0; }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 60vh;
+            font-size: 1.2rem;
+            color: #94a3b8;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #334155;
+            border-top-color: #0ea5e9;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-sessions {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1 id="event-title">Microsoft Build 2026</h1>
+        <p>Session Schedule</p>
+    </header>
+
+    <div class="controls">
+        <label for="event-filter">Event:</label>
+        <select id="event-filter">
+            <option value="build">Build</option>
+            <option value="ignite">Ignite</option>
+        </select>
+
+        <label for="year-filter">Year:</label>
+        <select id="year-filter">
+            <option value="2025">2025</option>
+            <option value="2026" selected>2026</option>
+            <option value="2027">2027</option>
+        </select>
+
+        <label for="day-filter">Day:</label>
+        <select id="day-filter">
+            <option value="all">All Days</option>
+        </select>
+
+        <label for="type-filter">Type:</label>
+        <select id="type-filter" multiple>
+            <option value="all" selected>All Types</option>
+        </select>
+
+        <label for="code-search">Code:</label>
+        <input type="text" id="code-search" placeholder="e.g. BRK123">
+
+        <div class="fav-toggle">
+            <input type="checkbox" id="fav-filter">
+            <label for="fav-filter">&#9733; Favorites only</label>
+        </div>
+
+        <div class="fav-actions">
+            <button id="export-favs" title="Export favorites to file">Export</button>
+            <button id="import-favs" title="Import favorites from file">Import</button>
+            <input type="file" id="import-file" accept=".json" style="display:none">
+        </div>
+
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background:#1d4ed8"></div>Breakout</div>
+            <div class="legend-item"><div class="legend-color" style="background:#047857"></div>Lab</div>
+            <div class="legend-item"><div class="legend-color" style="background:#b45309"></div>Demo</div>
+            <div class="legend-item"><div class="legend-color" style="background:#c2410c"></div>Lightning Talk</div>
+            <div class="legend-item"><div class="legend-color" style="background:#7c3aed"></div>Table Talk</div>
+            <div class="legend-item"><div class="legend-color" style="background:#4b5563"></div>Pre-recorded</div>
+        </div>
+    </div>
+
+    <div class="grid-container" id="grid-container">
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            Loading sessions...
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        function getDataUrl() {
+            const event = document.getElementById('event-filter').value;
+            const year = document.getElementById('year-filter').value;
+            return `https://eventtools.event.microsoft.com/${event}${year}-prod/fallback/session-all-en-us.json`;
+        }
+
+        let allSessions = [];
+        let tooltip = document.getElementById('tooltip');
+        let tooltipPinned = false;
+
+        // Favorites stored per event+year
+        function getFavKey() {
+            const event = document.getElementById('event-filter').value;
+            const year = document.getElementById('year-filter').value;
+            return `favorites_${event}${year}`;
+        }
+
+        function getFavorites() {
+            try {
+                return JSON.parse(localStorage.getItem(getFavKey())) || [];
+            } catch { return []; }
+        }
+
+        function toggleFavorite(sessionId) {
+            const favs = getFavorites();
+            const idx = favs.indexOf(sessionId);
+            if (idx >= 0) favs.splice(idx, 1);
+            else favs.push(sessionId);
+            localStorage.setItem(getFavKey(), JSON.stringify(favs));
+            applyFilters();
+        }
+
+        function isFavorite(sessionId) {
+            return getFavorites().includes(sessionId);
+        }
+
+        function getSessionTypeClass(type) {
+            if (!type) return 'type-other';
+            const t = type.toLowerCase();
+            if (t.includes('breakout')) return 'type-breakout';
+            if (t.includes('lab')) return 'type-lab';
+            if (t.includes('demo')) return 'type-demo';
+            if (t.includes('lightning')) return 'type-lightning-talk';
+            if (t.includes('table')) return 'type-table-talk';
+            if (t.includes('pre-recorded')) return 'type-pre-recorded';
+            if (t.includes('keynote')) return 'type-keynote';
+            return 'type-other';
+        }
+
+        function formatTime(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+
+        function getTimeSlotKey(session) {
+            if (!session.startDateTime) return null;
+            const d = new Date(session.startDateTime);
+            const hours = d.getUTCHours().toString().padStart(2, '0');
+            const minutes = d.getUTCMinutes().toString().padStart(2, '0');
+            return `${hours}:${minutes}`;
+        }
+
+        function getDateKey(session) {
+            if (!session.startDateTime) return null;
+            const d = new Date(session.startDateTime);
+            return d.toISOString().split('T')[0];
+        }
+
+        function buildGrid(sessions) {
+            const container = document.getElementById('grid-container');
+
+            // Normalize location: can be an object {displayValue: ...} or a plain string
+            function getLocation(s) {
+                if (!s.location) return '';
+                if (typeof s.location === 'string') return s.location.trim();
+                if (s.location.displayValue) return s.location.displayValue.trim();
+                return '';
+            }
+
+            // Filter sessions with valid time and location
+            const validSessions = sessions.filter(s =>
+                s.startDateTime &&
+                getLocation(s) !== ''
+            );
+
+            if (validSessions.length === 0) {
+                container.innerHTML = '<div class="no-sessions">No sessions match the current filters.</div>';
+                return;
+            }
+
+            // Get unique rooms and time slots
+            const roomsSet = new Set();
+            const timeSlotsMap = new Map();
+
+            validSessions.forEach(s => {
+                roomsSet.add(getLocation(s));
+                const key = s.startDateTime;
+                if (!timeSlotsMap.has(key)) {
+                    timeSlotsMap.set(key, {
+                        start: s.startDateTime,
+                        end: s.endDateTime,
+                        timeSlot: s.TimeSlot || formatTime(s.startDateTime)
+                    });
+                }
+            });
+
+            // Sort rooms
+            const rooms = [...roomsSet].sort();
+
+            // Sort time slots chronologically
+            const timeSlots = [...timeSlotsMap.entries()]
+                .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+                .map(([key, val]) => ({ key, ...val }));
+
+            // Build session lookup: timeSlotKey + room -> sessions
+            const sessionMap = new Map();
+            validSessions.forEach(s => {
+                const mapKey = `${s.startDateTime}|||${getLocation(s)}`;
+                if (!sessionMap.has(mapKey)) sessionMap.set(mapKey, []);
+                sessionMap.get(mapKey).push(s);
+            });
+
+            // Create the grid
+            const numCols = rooms.length + 1; // +1 for time column
+            const grid = document.createElement('div');
+            grid.className = 'schedule-grid';
+            grid.style.gridTemplateColumns = `120px repeat(${rooms.length}, minmax(150px, 1fr))`;
+
+            // Header row
+            const cornerCell = document.createElement('div');
+            cornerCell.className = 'grid-header';
+            cornerCell.textContent = 'Time';
+            grid.appendChild(cornerCell);
+
+            rooms.forEach(room => {
+                const header = document.createElement('div');
+                header.className = 'grid-header';
+                header.textContent = room;
+                header.title = room;
+                grid.appendChild(header);
+            });
+
+            // Data rows
+            timeSlots.forEach(slot => {
+                // Time label
+                const timeCell = document.createElement('div');
+                timeCell.className = 'time-label';
+                const slotDate = new Date(slot.key);
+                const dateLabel = slotDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/Los_Angeles' });
+                const timeLabel = slotDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Los_Angeles' });
+                timeCell.textContent = `${dateLabel} ${timeLabel}`;
+                grid.appendChild(timeCell);
+
+                // Room cells
+                rooms.forEach(room => {
+                    const cell = document.createElement('div');
+                    cell.className = 'grid-cell';
+                    const mapKey = `${slot.key}|||${room}`;
+                    const cellSessions = sessionMap.get(mapKey) || [];
+
+                    cellSessions.forEach(s => {
+                        const card = document.createElement('div');
+                        const typeClass = getSessionTypeClass(s.sessionType?.displayValue);
+                        const sid = s.sessionId || s.sessionCode || '';
+                        const fav = isFavorite(sid);
+                        card.className = `session-card ${typeClass}${fav ? ' is-favorite' : ''}`;
+
+                        card.innerHTML = `
+                            <button class="fav-btn${fav ? ' favorited' : ''}" title="${fav ? 'Remove from favorites' : 'Add to favorites'}">${fav ? '★' : '☆'}</button>
+                            <div class="session-code">${escapeHtml(s.sessionCode || '')}</div>
+                            <div class="session-title">${escapeHtml(s.title || '')}</div>
+                            <div class="session-speakers">${escapeHtml(s.speakerNames || '')}</div>
+                        `;
+
+                        card.querySelector('.fav-btn').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            toggleFavorite(sid);
+                        });
+
+                        card.addEventListener('mouseenter', (e) => showTooltip(e, s));
+                        card.addEventListener('mousemove', (e) => moveTooltip(e));
+                        card.addEventListener('mouseleave', hideTooltip);
+                        card.addEventListener('click', (e) => pinTooltip(e, s));
+
+                        cell.appendChild(card);
+                    });
+
+                    grid.appendChild(cell);
+                });
+            });
+
+            container.innerHTML = '';
+            container.appendChild(grid);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatSessionTime(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'America/Los_Angeles' });
+        }
+
+        function formatSpeakers(session) {
+            if (session.speakers && session.speakers.length > 0) {
+                return session.speakers.map(sp => {
+                    const name = [sp.firstName, sp.lastName].filter(Boolean).join(' ') || sp.fullName || sp.name || '';
+                    const company = sp.companyName || sp.company || '';
+                    return company ? `${name} (${company})` : name;
+                }).join(', ');
+            }
+            return session.speakerNames || 'No speakers listed';
+        }
+
+        function showTooltip(e, session) {
+            if (tooltipPinned) return;
+            const desc = session.description || 'No description available.';
+            const type = session.sessionType?.displayValue || 'Unknown';
+            const level = session.sessionLevel?.[0]?.displayValue || '';
+            const topic = session.topic?.[0]?.displayValue || '';
+            const startTime = formatSessionTime(session.startDateTime);
+            const endTime = formatSessionTime(session.endDateTime);
+            const timeStr = startTime && endTime ? `${startTime} – ${endTime}` : '';
+
+            tooltip.innerHTML = `
+                <div class="tt-code">${escapeHtml(session.sessionCode || '')} &middot; ${escapeHtml(type)}</div>
+                <div class="tt-title">${escapeHtml(session.title || '')}</div>
+                ${timeStr ? `<div class="tt-time">${timeStr}</div>` : ''}
+                <div class="tt-speakers">${escapeHtml(formatSpeakers(session))}</div>
+                <div class="tt-desc">${escapeHtml(desc)}</div>
+                <div class="tt-meta">${escapeHtml(level)}${topic ? ' &middot; ' + escapeHtml(topic) : ''}</div>
+            `;
+            tooltip.classList.add('visible');
+            moveTooltip(e);
+        }
+
+        function moveTooltip(e) {
+            if (tooltipPinned) return;
+            const x = e.clientX + 15;
+            const y = e.clientY + 15;
+            const maxX = window.innerWidth - 420;
+            const maxY = window.innerHeight - 320;
+            tooltip.style.left = Math.min(x, maxX) + 'px';
+            tooltip.style.top = Math.min(y, maxY) + 'px';
+        }
+
+        function hideTooltip() {
+            if (tooltipPinned) return;
+            tooltip.classList.remove('visible');
+        }
+
+        function pinTooltip(e, session) {
+            e.stopPropagation();
+            tooltipPinned = true;
+            tooltip.classList.add('pinned');
+            // Re-render content in case hover hadn't fired
+            const desc = session.description || 'No description available.';
+            const type = session.sessionType?.displayValue || 'Unknown';
+            const level = session.sessionLevel?.[0]?.displayValue || '';
+            const topic = session.topic?.[0]?.displayValue || '';
+            const startTime = formatSessionTime(session.startDateTime);
+            const endTime = formatSessionTime(session.endDateTime);
+            const timeStr = startTime && endTime ? `${startTime} – ${endTime}` : '';
+            tooltip.innerHTML = `
+                <div class="tt-code">${escapeHtml(session.sessionCode || '')} &middot; ${escapeHtml(type)}</div>
+                <div class="tt-title">${escapeHtml(session.title || '')}</div>
+                ${timeStr ? `<div class="tt-time">${timeStr}</div>` : ''}
+                <div class="tt-speakers">${escapeHtml(formatSpeakers(session))}</div>
+                <div class="tt-desc">${escapeHtml(desc)}</div>
+                <div class="tt-meta">${escapeHtml(level)}${topic ? ' &middot; ' + escapeHtml(topic) : ''}</div>
+            `;
+            tooltip.classList.add('visible');
+        }
+
+        function unpinTooltip() {
+            tooltipPinned = false;
+            tooltip.classList.remove('pinned');
+            tooltip.classList.remove('visible');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (tooltipPinned && !tooltip.contains(e.target)) {
+                unpinTooltip();
+            }
+        });
+
+        function populateFilters(sessions) {
+            const dayFilter = document.getElementById('day-filter');
+            const typeFilter = document.getElementById('type-filter');
+
+            // Get unique days (in Pacific time)
+            const days = new Set();
+            const types = new Set();
+
+            sessions.forEach(s => {
+                if (s.startDateTime) {
+                    const d = new Date(s.startDateTime);
+                    const sfDay = d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' }); // YYYY-MM-DD
+                    days.add(sfDay);
+                }
+                if (s.sessionType?.displayValue) {
+                    types.add(s.sessionType.displayValue);
+                }
+            });
+
+            [...days].sort().forEach(day => {
+                const opt = document.createElement('option');
+                opt.value = day;
+                const d = new Date(day + 'T12:00:00Z');
+                opt.textContent = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                dayFilter.appendChild(opt);
+            });
+
+            [...types].sort().forEach(type => {
+                const opt = document.createElement('option');
+                opt.value = type;
+                opt.textContent = type;
+                typeFilter.appendChild(opt);
+            });
+        }
+
+        function applyFilters() {
+            const dayVal = document.getElementById('day-filter').value;
+            const typeSelect = document.getElementById('type-filter');
+            const selectedTypes = [...typeSelect.selectedOptions].map(o => o.value);
+
+            // If "All Types" is among selected, or nothing selected, show all types
+            const filterByType = !selectedTypes.includes('all') && selectedTypes.length > 0;
+
+            let filtered = allSessions;
+
+            if (dayVal !== 'all') {
+                filtered = filtered.filter(s => {
+                    if (!s.startDateTime) return false;
+                    const d = new Date(s.startDateTime);
+                    const sfDay = d.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
+                    return sfDay === dayVal;
+                });
+            }
+
+            if (filterByType) {
+                filtered = filtered.filter(s => selectedTypes.includes(s.sessionType?.displayValue));
+            }
+
+            if (document.getElementById('fav-filter').checked) {
+                const favs = getFavorites();
+                filtered = filtered.filter(s => favs.includes(s.sessionId || s.sessionCode || ''));
+            }
+
+            const codeSearch = document.getElementById('code-search').value.trim().toLowerCase();
+            if (codeSearch) {
+                filtered = filtered.filter(s => (s.sessionCode || '').toLowerCase().includes(codeSearch));
+            }
+
+            buildGrid(filtered);
+        }
+
+        async function loadData() {
+            const container = document.getElementById('grid-container');
+            container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Loading sessions...</div>';
+
+            // Update header
+            const event = document.getElementById('event-filter').value;
+            const year = document.getElementById('year-filter').value;
+            const eventName = event.charAt(0).toUpperCase() + event.slice(1);
+            document.getElementById('event-title').textContent = `Microsoft ${eventName} ${year}`;
+
+            // Reset filters
+            const dayFilter = document.getElementById('day-filter');
+            dayFilter.innerHTML = '<option value="all">All Days</option>';
+            const typeFilter = document.getElementById('type-filter');
+            typeFilter.innerHTML = '<option value="all" selected>All Types</option>';
+
+            try {
+                const resp = await fetch(getDataUrl());
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                const data = await resp.json();
+
+                // The JSON may be an array or have a value property
+                allSessions = Array.isArray(data) ? data : (data.value || data.sessions || []);
+
+                populateFilters(allSessions);
+
+                // Default to first day with in-person sessions
+                if (dayFilter.options.length > 1) {
+                    dayFilter.value = dayFilter.options[1].value;
+                }
+
+                applyFilters();
+            } catch (err) {
+                allSessions = [];
+                document.getElementById('grid-container').innerHTML =
+                    `<div class="no-sessions">No session data available for this event.</div>`;
+            }
+        }
+
+        // Export/Import favorites
+        document.getElementById('export-favs').addEventListener('click', () => {
+            const allFavs = {};
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith('favorites_')) {
+                    allFavs[key] = JSON.parse(localStorage.getItem(key));
+                }
+            }
+            const blob = new Blob([JSON.stringify(allFavs, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'build-favorites.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('import-favs').addEventListener('click', () => {
+            document.getElementById('import-file').click();
+        });
+
+        document.getElementById('import-file').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const data = JSON.parse(evt.target.result);
+                    for (const [key, val] of Object.entries(data)) {
+                        if (key.startsWith('favorites_') && Array.isArray(val)) {
+                            // Merge with existing favorites
+                            const existing = JSON.parse(localStorage.getItem(key) || '[]');
+                            const merged = [...new Set([...existing, ...val])];
+                            localStorage.setItem(key, JSON.stringify(merged));
+                        }
+                    }
+                    applyFilters();
+                } catch { alert('Invalid favorites file.'); }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        });
+
+        document.getElementById('day-filter').addEventListener('change', applyFilters);
+        document.getElementById('code-search').addEventListener('input', applyFilters);
+        document.getElementById('fav-filter').addEventListener('change', applyFilters);
+        document.getElementById('event-filter').addEventListener('change', loadData);
+        document.getElementById('year-filter').addEventListener('change', loadData);
+        document.getElementById('type-filter').addEventListener('change', function() {
+            const sel = this;
+            const selectedVals = [...sel.selectedOptions].map(o => o.value);
+            // If "All Types" was just selected, deselect everything else
+            if (selectedVals.includes('all') && selectedVals.length > 1) {
+                [...sel.options].forEach(o => o.selected = o.value === 'all');
+            } else if (!selectedVals.includes('all') && selectedVals.length > 0) {
+                // Deselect "All Types" when specific types are picked
+                sel.options[0].selected = false;
+            } else if (selectedVals.length === 0) {
+                sel.options[0].selected = true;
+            }
+            applyFilters();
+        });
+
+        loadData();
+    </script>
+</body>
+</html>

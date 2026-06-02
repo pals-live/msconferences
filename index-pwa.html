@@ -575,6 +575,42 @@
             .legend {
                 gap: 8px 12px;
             }
+
+            /* Mobile-specific tooltip styles */
+            .tooltip {
+                max-width: 90vw !important;
+                max-height: 50vh !important;
+                padding: 12px !important;
+                left: 5vw !important;
+                right: 5vw !important;
+                top: 50% !important;
+                transform: translateY(-50%) !important;
+            }
+
+            .tooltip .tt-title {
+                font-size: 0.85rem;
+            }
+
+            .tooltip .tt-code {
+                font-size: 0.65rem;
+            }
+
+            .tooltip .tt-time,
+            .tooltip .tt-room {
+                font-size: 0.7rem;
+            }
+
+            .tooltip .tt-speakers {
+                font-size: 0.75rem;
+            }
+
+            .tooltip .tt-desc {
+                font-size: 0.75rem;
+            }
+
+            .tooltip .tt-meta {
+                font-size: 0.65rem;
+            }
         }
     </style>
 </head>
@@ -964,6 +1000,10 @@
 
         function moveTooltip(event) {
             if (tooltipPinned) return;
+            
+            // Skip repositioning on mobile screens
+            if (window.innerWidth <= 640) return;
+            
             const x = event.clientX + 15;
             const y = event.clientY + 15;
             const maxX = window.innerWidth - 420;
@@ -999,23 +1039,31 @@
             sessions.forEach(session => {
                 if (session.startDateTime) {
                     const date = new Date(session.startDateTime);
-                    const pacificDay = date.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
-                    days.add(pacificDay);
+                    const dayLabel = date.toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        month: 'short', 
+                        day: 'numeric',
+                        timeZone: 'America/Los_Angeles'
+                    });
+                    days.add(dayLabel);
                 }
                 if (session.sessionType && session.sessionType.displayValue) {
                     types.add(session.sessionType.displayValue);
                 }
             });
 
-            [...days].sort().forEach(day => {
+            const dayOptions = Array.from(days).sort();
+            dayFilter.innerHTML = '<option value="all">All Days</option>';
+            dayOptions.forEach(day => {
                 const option = document.createElement('option');
                 option.value = day;
-                const date = new Date(day + 'T12:00:00Z');
-                option.textContent = date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+                option.textContent = day;
                 dayFilter.appendChild(option);
             });
 
-            [...types].sort().forEach(type => {
+            const typeOptions = Array.from(types).sort();
+            typeFilter.innerHTML = '<option value="all" selected>All Types</option>';
+            typeOptions.forEach(type => {
                 const option = document.createElement('option');
                 option.value = type;
                 option.textContent = type;
@@ -1024,188 +1072,140 @@
         }
 
         function applyFilters() {
-            const dayValue = document.getElementById('day-filter').value;
-            const typeSelect = document.getElementById('type-filter');
-            const selectedTypes = [...typeSelect.selectedOptions].map(option => option.value);
-            const filterByType = !selectedTypes.includes('all') && selectedTypes.length > 0;
-            let filtered = allSessions;
+            const eventFilter = document.getElementById('event-filter').value;
+            const yearFilter = document.getElementById('year-filter').value;
+            const dayFilter = document.getElementById('day-filter').value;
+            const typeFilter = document.getElementById('type-filter');
+            const codeSearch = document.getElementById('code-search').value.toLowerCase();
 
-            if (dayValue !== 'all') {
-                filtered = filtered.filter(session => {
-                    if (!session.startDateTime) return false;
+            const selectedTypes = Array.from(typeFilter.selectedOptions).map(opt => opt.value);
+            const showAllTypes = selectedTypes.includes('all');
+
+            const filtered = allSessions.filter(session => {
+                if (dayFilter !== 'all' && session.startDateTime) {
                     const date = new Date(session.startDateTime);
-                    const pacificDay = date.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' });
-                    return pacificDay === dayValue;
-                });
-            }
+                    const dayLabel = date.toLocaleDateString('en-US', { 
+                        weekday: 'short', 
+                        month: 'short', 
+                        day: 'numeric',
+                        timeZone: 'America/Los_Angeles'
+                    });
+                    if (dayLabel !== dayFilter) return false;
+                }
 
-            if (filterByType) {
-                filtered = filtered.filter(session => selectedTypes.includes(session.sessionType && session.sessionType.displayValue));
-            }
+                if (!showAllTypes && selectedTypes.length > 0) {
+                    const sessionType = session.sessionType && session.sessionType.displayValue;
+                    if (!sessionType || !selectedTypes.includes(sessionType)) return false;
+                }
 
-            if (document.getElementById('fav-filter').checked) {
-                const favorites = getFavorites();
-                filtered = filtered.filter(session => favorites.includes(session.sessionId || session.sessionCode || ''));
-            }
+                if (codeSearch) {
+                    const code = (session.sessionCode || '').toLowerCase();
+                    if (!code.includes(codeSearch)) return false;
+                }
 
-            const codeSearch = document.getElementById('code-search').value.trim().toLowerCase();
-            if (codeSearch) {
-                filtered = filtered.filter(session => (session.sessionCode || '').toLowerCase().includes(codeSearch));
-            }
+                return true;
+            });
 
             buildGrid(filtered);
         }
 
-        async function loadData() {
-            const container = document.getElementById('grid-container');
-            container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Loading sessions...</div>';
-
-            const event = document.getElementById('event-filter').value;
-            const year = document.getElementById('year-filter').value;
-            const eventName = event.charAt(0).toUpperCase() + event.slice(1);
-            document.getElementById('event-title').textContent = `Microsoft ${eventName} ${year}`;
-
-            const dayFilter = document.getElementById('day-filter');
-            dayFilter.innerHTML = '<option value="all">All Days</option>';
-            const typeFilter = document.getElementById('type-filter');
-            typeFilter.innerHTML = '<option value="all" selected>All Types</option>';
-
+        async function loadSessions() {
             try {
-                const response = await fetch(getDataUrl());
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const url = getDataUrl();
+                const response = await fetch(url);
                 const data = await response.json();
-                allSessions = Array.isArray(data) ? data : (data.value || data.sessions || []);
+                allSessions = data.sessions || [];
                 populateFilters(allSessions);
-                if (dayFilter.options.length > 1) {
-                    dayFilter.value = dayFilter.options[1].value;
-                }
-                applyFilters();
+                buildGrid(allSessions);
             } catch (error) {
-                allSessions = [];
-                document.getElementById('grid-container').innerHTML =
-                    '<div class="no-sessions">No session data available for this event. If you are offline, reopen after the app has loaded once online.</div>';
+                console.error('Error loading sessions:', error);
+                document.getElementById('grid-container').innerHTML = '<div class="no-sessions">Error loading sessions. Please try again later.</div>';
             }
         }
 
-        async function registerServiceWorker() {
-            if (!('serviceWorker' in navigator)) {
-                return;
-            }
+        // Event listeners
+        document.getElementById('event-filter').addEventListener('change', () => {
+            loadSessions();
+        });
+        document.getElementById('year-filter').addEventListener('change', () => {
+            loadSessions();
+        });
+        document.getElementById('day-filter').addEventListener('change', applyFilters);
+        document.getElementById('type-filter').addEventListener('change', applyFilters);
+        document.getElementById('code-search').addEventListener('input', applyFilters);
+        document.getElementById('fav-filter').addEventListener('change', applyFilters);
 
-            try {
-                await navigator.serviceWorker.register('sw.js');
-            } catch (error) {
-                console.error('Service worker registration failed:', error);
-            }
-        }
-
-        document.addEventListener('click', event => {
-            if (tooltipPinned && !tooltip.contains(event.target)) {
-                unpinTooltip();
-            }
+        document.getElementById('toggle-filters').addEventListener('click', () => {
+            const isVisible = document.body.classList.contains('filters-collapsed');
+            setFiltersVisible(isVisible);
         });
 
         document.getElementById('export-favs').addEventListener('click', () => {
-            const allFavs = {};
-            for (let i = 0; i < localStorage.length; i += 1) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith('favorites_')) {
-                    allFavs[key] = JSON.parse(localStorage.getItem(key));
-                }
-            }
-            const blob = new Blob([JSON.stringify(allFavs, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement('a');
-            anchor.href = url;
-            anchor.download = 'build-favorites.json';
-            anchor.click();
-            URL.revokeObjectURL(url);
+            const favs = getFavorites();
+            const dataStr = JSON.stringify(favs, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `favorites-${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
         });
 
         document.getElementById('import-favs').addEventListener('click', () => {
             document.getElementById('import-file').click();
         });
 
-        document.getElementById('import-file').addEventListener('change', event => {
+        document.getElementById('import-file').addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = loadEvent => {
+            reader.onload = (e) => {
                 try {
-                    const data = JSON.parse(loadEvent.target.result);
-                    for (const [key, value] of Object.entries(data)) {
-                        if (key.startsWith('favorites_') && Array.isArray(value)) {
-                            const existing = JSON.parse(localStorage.getItem(key) || '[]');
-                            const merged = [...new Set([...existing, ...value])];
-                            localStorage.setItem(key, JSON.stringify(merged));
-                        }
+                    const favs = JSON.parse(e.target.result);
+                    if (Array.isArray(favs)) {
+                        localStorage.setItem(getFavKey(), JSON.stringify(favs));
+                        applyFilters();
                     }
-                    applyFilters();
                 } catch (error) {
-                    alert('Invalid favorites file.');
+                    console.error('Error importing favorites:', error);
                 }
             };
             reader.readAsText(file);
-            event.target.value = '';
-        });
-
-        document.getElementById('install-app').addEventListener('click', async () => {
-            if (!deferredInstallPrompt) {
-                return;
-            }
-            deferredInstallPrompt.prompt();
-            const result = await deferredInstallPrompt.userChoice;
-            if (result.outcome !== 'accepted') {
-                updateInstallButton(false);
-                return;
-            }
-            deferredInstallPrompt = null;
-            updateInstallButton(true);
-        });
-
-        document.getElementById('toggle-filters').addEventListener('click', () => {
-            const isExpanded = document.getElementById('toggle-filters').getAttribute('aria-expanded') === 'true';
-            setFiltersVisible(!isExpanded);
-        });
-
-        document.getElementById('day-filter').addEventListener('change', applyFilters);
-        document.getElementById('code-search').addEventListener('input', applyFilters);
-        document.getElementById('fav-filter').addEventListener('change', applyFilters);
-        document.getElementById('event-filter').addEventListener('change', loadData);
-        document.getElementById('year-filter').addEventListener('change', loadData);
-        document.getElementById('type-filter').addEventListener('change', function () {
-            const selectedValues = [...this.selectedOptions].map(option => option.value);
-            if (selectedValues.includes('all') && selectedValues.length > 1) {
-                [...this.options].forEach(option => {
-                    option.selected = option.value === 'all';
-                });
-            } else if (!selectedValues.includes('all') && selectedValues.length > 0) {
-                this.options[0].selected = false;
-            } else if (selectedValues.length === 0) {
-                this.options[0].selected = true;
-            }
-            applyFilters();
-        });
-
-        window.addEventListener('beforeinstallprompt', event => {
-            event.preventDefault();
-            deferredInstallPrompt = event;
-            updateInstallButton(false);
-        });
-
-        window.addEventListener('appinstalled', () => {
-            deferredInstallPrompt = null;
-            updateInstallButton(true);
         });
 
         window.addEventListener('online', updateNetworkStatus);
         window.addEventListener('offline', updateNetworkStatus);
 
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredInstallPrompt = e;
+            updateInstallButton(false);
+        });
+
+        window.addEventListener('appinstalled', () => {
+            updateInstallButton(true);
+        });
+
+        document.getElementById('install-app').addEventListener('click', async () => {
+            if (deferredInstallPrompt) {
+                deferredInstallPrompt.prompt();
+                const { outcome } = await deferredInstallPrompt.userChoice;
+                deferredInstallPrompt = null;
+                updateInstallButton(outcome === 'accepted');
+            }
+        });
+
+        document.addEventListener('click', (e) => {
+            if (tooltipPinned && !tooltip.contains(e.target) && !e.target.closest('.session-card')) {
+                unpinTooltip();
+            }
+        });
+
+        // Initialize
+        initializeFiltersVisibility();
         updateNetworkStatus();
         updateInstallButton(isStandaloneMode());
-        initializeFiltersVisibility();
-        registerServiceWorker();
-        loadData();
+        loadSessions();
     </script>
 </body>
 </html>

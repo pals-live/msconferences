@@ -288,6 +288,27 @@
             background: #475569;
         }
 
+        .refresh-btn {
+            background: #0f3460;
+            color: #e0e0e0;
+            border: 1px solid #0ea5e9;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .refresh-btn:hover:not(:disabled) {
+            background: #164b80;
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.65;
+            cursor: wait;
+        }
+
         .tooltip {
             display: none;
             position: fixed;
@@ -407,6 +428,7 @@
 
     <div class="controls">
         <button id="toggle-filters" class="filter-toggle-btn" type="button" aria-expanded="true">Hide Filters</button>
+        <button id="refresh-data" class="refresh-btn" type="button" title="Fetch the latest session data">Refresh Data</button>
 
         <div id="filter-fields" class="filter-fields">
             <label for="event-filter">Event:</label>
@@ -593,6 +615,11 @@
                 }
             });
 
+            // Sort time slots chronologically
+            const timeSlots = [...timeSlotsMap.entries()]
+                .sort((a, b) => new Date(a[0]) - new Date(b[0]))
+                .map(([key, val]) => ({ key, ...val }));
+
             let columns = [];
             if (favoritesOnly) {
                 const slotCounts = timeSlots.map(slot => validSessions.filter(session => session.startDateTime === slot.key).length);
@@ -601,11 +628,6 @@
             } else {
                 columns = [...new Set(validSessions.map(getSessionRoom))].sort();
             }
-
-            // Sort time slots chronologically
-            const timeSlots = [...timeSlotsMap.entries()]
-                .sort((a, b) => new Date(a[0]) - new Date(b[0]))
-                .map(([key, val]) => ({ key, ...val }));
 
             // Create the grid
             const grid = document.createElement('div');
@@ -871,7 +893,10 @@
 
         async function loadData() {
             const container = document.getElementById('grid-container');
+            const refreshButton = document.getElementById('refresh-data');
             container.innerHTML = '<div class="loading"><div class="loading-spinner"></div>Loading sessions...</div>';
+            refreshButton.disabled = true;
+            refreshButton.textContent = 'Refreshing...';
 
             // Update header
             const event = document.getElementById('event-filter').value;
@@ -886,7 +911,7 @@
             typeFilter.innerHTML = '<option value="all" selected>All Types</option>';
 
             try {
-                const resp = await fetch(getDataUrl());
+                const resp = await fetch(getDataUrl(), { cache: 'no-store' });
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                 const data = await resp.json();
 
@@ -905,6 +930,9 @@
                 allSessions = [];
                 document.getElementById('grid-container').innerHTML =
                     `<div class="no-sessions">No session data available for this event.</div>`;
+            } finally {
+                refreshButton.disabled = false;
+                refreshButton.textContent = 'Refresh Data';
             }
         }
 
@@ -957,6 +985,7 @@
             setFiltersVisible(!isExpanded);
         });
 
+        document.getElementById('refresh-data').addEventListener('click', loadData);
         document.getElementById('day-filter').addEventListener('change', applyFilters);
         document.getElementById('code-search').addEventListener('input', applyFilters);
         document.getElementById('fav-filter').addEventListener('change', applyFilters);
